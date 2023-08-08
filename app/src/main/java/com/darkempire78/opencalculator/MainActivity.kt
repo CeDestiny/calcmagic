@@ -26,12 +26,16 @@ import com.darkempire78.opencalculator.databinding.ActivityMainBinding
 import com.sothree.slidinguppanel.PanelSlideListener
 import com.sothree.slidinguppanel.PanelState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormatSymbols
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 
 var appLanguage: Locale = Locale.getDefault()
@@ -55,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var historyAdapter: HistoryAdapter
     private lateinit var historyLayoutMgr: LinearLayoutManager
+
+    private var job: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -271,11 +277,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun keyVibration(view: View) {
-        if (MyPreferences(this).vibrationMode) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-            }
-        }
+//        if (MyPreferences(this).vibrationMode) {
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+//                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+//            }
+//        }
     }
 
     private fun setErrorColor(errorStatus: Boolean) {
@@ -460,19 +466,64 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enableOrDisableScientistMode() {
-        if (binding.scientistModeRow2.visibility != View.VISIBLE) {
-            binding.scientistModeRow2.visibility = View.VISIBLE
-            binding.scientistModeRow3.visibility = View.VISIBLE
-            binding.scientistModeSwitchButton?.setImageResource(R.drawable.ic_baseline_keyboard_arrow_up_24)
-            binding.degreeTextView.visibility = View.VISIBLE
-            binding.degreeTextView.text = binding.degreeButton.text.toString()
-        } else {
-            binding.scientistModeRow2.visibility = View.GONE
-            binding.scientistModeRow3.visibility = View.GONE
+//        if (binding.scientistModeRow2.visibility != View.VISIBLE) {
+//            binding.scientistModeRow2.visibility = View.VISIBLE
+//            binding.scientistModeRow3.visibility = View.VISIBLE
+//            binding.scientistModeSwitchButton?.setImageResource(R.drawable.ic_baseline_keyboard_arrow_up_24)
+//            binding.degreeTextView.visibility = View.VISIBLE
+//            binding.degreeTextView.text = binding.degreeButton.text.toString()
+//        } else {
+//            binding.scientistModeRow2.visibility = View.GONE
+//            binding.scientistModeRow3.visibility = View.GONE
+//            binding.scientistModeSwitchButton?.setImageResource(R.drawable.ic_baseline_keyboard_arrow_down_24)
+//            binding.degreeTextView.visibility = View.GONE
+//            binding.degreeTextView.text = binding.degreeButton.text.toString()
+//        }
+
+        if (Magic.IS_MAGIC_ENABLED) {
+            // turn off magic
             binding.scientistModeSwitchButton?.setImageResource(R.drawable.ic_baseline_keyboard_arrow_down_24)
-            binding.degreeTextView.visibility = View.GONE
-            binding.degreeTextView.text = binding.degreeButton.text.toString()
+            job?.cancel()
+        } else {
+            // turn on magic
+            binding.scientistModeSwitchButton?.setImageResource(R.drawable.ic_baseline_keyboard_arrow_up_24)
+
+            job = GlobalScope.launch {
+                delaySeconds(1000)
+                equalsButton(findViewById(R.id.equalsButton))
+                calculateMagicNumber()
+            }
         }
+
+        Magic.IS_MAGIC_ENABLED = !Magic.IS_MAGIC_ENABLED
+    }
+
+    private suspend fun delaySeconds(millis: Long) {
+        delay(millis)
+    }
+
+    private suspend fun calculateMagicNumber() {
+//        equalsButton(findViewById(R.id.equalsButton))
+//        delaySeconds(50)
+
+        var kotlinString: String = binding.input.text.toString()
+        kotlinString = kotlinString.replace(",", "").replace("+", "")
+        val currentTotal = kotlinString.toInt()
+        val diff = (Magic.calculateCombinedNumber() - currentTotal).toString()
+
+        addButton(findViewById(R.id.addButton))
+        delaySeconds(50)
+
+        val digitArray = diff.map { it.toString() }.toTypedArray()
+
+        for (digit in digitArray) {
+            delayAndAddNumber(digit)
+        }
+    }
+
+    private suspend fun delayAndAddNumber(value: String) {
+        delaySeconds(50)
+        updateDisplay(findViewById(R.id.threeButton), value)
     }
 
     // Switch between degree and radian mode
