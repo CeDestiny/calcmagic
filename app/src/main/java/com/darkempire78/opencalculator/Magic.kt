@@ -8,7 +8,7 @@ class Magic {
         var IS_MAGIC_ENABLED: Boolean = false
 
         fun calculateCombinedNumber(): Int {
-            val now = LocalDateTime.now().plusSeconds(90)
+            val now = LocalDateTime.now().plusSeconds(60)
             val dateFormatter = DateTimeFormatter.ofPattern("MMddyyhhmm")
             val formattedDateTime = now.format(dateFormatter)
             return formattedDateTime.toInt()

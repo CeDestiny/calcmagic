@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.darkempire78.opencalculator.databinding.ActivityMainBinding
 import com.sothree.slidinguppanel.PanelSlideListener
 import com.sothree.slidinguppanel.PanelState
+import com.sothree.slidinguppanel.SlidingUpPanelLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -61,6 +62,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var historyLayoutMgr: LinearLayoutManager
 
     private var job: Job? = null
+    private var blockInput = false
+    private var allowEquals = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -480,18 +483,43 @@ class MainActivity : AppCompatActivity() {
 //            binding.degreeTextView.text = binding.degreeButton.text.toString()
 //        }
 
+        if (blockInput) {
+            return;
+        }
+
         if (Magic.IS_MAGIC_ENABLED) {
             // turn off magic
             binding.scientistModeSwitchButton?.setImageResource(R.drawable.ic_baseline_keyboard_arrow_down_24)
             job?.cancel()
         } else {
+            if (binding.input.text.toString().length == 0
+                || binding.input.text.toString().last() != '+') {
+                return;
+            } else {
+                var nocomma = binding.input.text.toString().replace(",", "")
+                nocomma = nocomma.substring(0, nocomma.length - 1)
+                try {
+                    nocomma.toInt()
+                } catch (ex: Exception) {
+                    return
+                }
+
+            }
+
+            allowEquals = false
+            blockInput = true
+            findViewById<SlidingUpPanelLayout>(R.id.sliding_layout).isEnabled = false
+
             // turn on magic
             binding.scientistModeSwitchButton?.setImageResource(R.drawable.ic_baseline_keyboard_arrow_up_24)
 
+
             job = GlobalScope.launch {
-                delaySeconds(1000)
+                delaySeconds(3000)
                 equalsButton(findViewById(R.id.equalsButton))
                 calculateMagicNumber()
+                delaySeconds(2000)
+                allowEquals = true
             }
         }
 
@@ -511,7 +539,7 @@ class MainActivity : AppCompatActivity() {
         val currentTotal = kotlinString.toInt()
         val diff = (Magic.calculateCombinedNumber() - currentTotal).toString()
 
-        addButton(findViewById(R.id.addButton))
+        addSymbol(findViewById(R.id.addButton), "+")
         delaySeconds(50)
 
         val digitArray = diff.map { it.toString() }.toTypedArray()
@@ -625,6 +653,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun keyDigitPadMappingToDisplay(view: View) {
+        if (blockInput) {
+            return
+        }
+
         updateDisplay(view, (view as Button).text as String)
     }
 
@@ -653,7 +685,7 @@ class MainActivity : AppCompatActivity() {
             ) { // Minus symbol is an override
                 // If previous character is a symbol, replace it
                 if (previousChar.matches("[+\\-÷×^]".toRegex())) {
-                    keyVibration(view)
+//                    keyVibration(view)
 
                     val leftString =
                         binding.input.text.subSequence(0, cursorPosition - 1).toString()
@@ -681,7 +713,7 @@ class MainActivity : AppCompatActivity() {
                 else if (nextChar.matches("[+\\-÷×^%!]".toRegex())
                     && currentSymbol != "%"
                 ) { // Make sure that percent symbol doesn't replace succeeding symbols
-                    keyVibration(view)
+//                    keyVibration(view)
 
                     val leftString = binding.input.text.subSequence(0, cursorPosition).toString()
                     val rightString =
@@ -696,38 +728,51 @@ class MainActivity : AppCompatActivity() {
                 else if (cursorPosition > 0 || nextChar != "0" && currentSymbol == "-") {
                     updateDisplay(view, currentSymbol)
                 } else keyVibration(view)
-            } else keyVibration(view)
+            }
         } else { // Allow minus symbol, even if the input is empty
             if (currentSymbol == "-") updateDisplay(view, currentSymbol)
-            else keyVibration(view)
         }
     }
 
     fun addButton(view: View) {
+        if (blockInput) return
+
         addSymbol(view, "+")
     }
 
     fun subtractButton(view: View) {
+        if (blockInput) return
+
         addSymbol(view, "-")
     }
 
     fun divideButton(view: View) {
+        if (blockInput) return
+
         addSymbol(view, "÷")
     }
 
     fun multiplyButton(view: View) {
+        if (blockInput) return
+
         addSymbol(view, "×")
     }
 
     fun exponentButton(view: View) {
+        if (blockInput) return
+
         addSymbol(view, "^")
     }
 
     fun pointButton(view: View) {
+        if (blockInput) return
+
         updateDisplay(view, decimalSeparatorSymbol)
     }
 
     fun sineButton(view: View) {
+        if (blockInput) return
+
         if (!isInvButtonClicked) {
             updateDisplay(view, "sin(")
         } else {
@@ -736,6 +781,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun cosineButton(view: View) {
+        if (blockInput) return
+
         if (!isInvButtonClicked) {
             updateDisplay(view, "cos(")
         } else {
@@ -744,6 +791,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun tangentButton(view: View) {
+        if (blockInput) return
+
         if (!isInvButtonClicked) {
             updateDisplay(view, "tan(")
         } else {
@@ -752,10 +801,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun eButton(view: View) {
+        if (blockInput) return
+
         updateDisplay(view, "e")
     }
 
     fun naturalLogarithmButton(view: View) {
+        if (blockInput) return
+
         if (!isInvButtonClicked) {
             updateDisplay(view, "ln(")
         } else {
@@ -764,6 +817,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun logarithmButton(view: View) {
+        if (blockInput) return
+
         if (!isInvButtonClicked) {
             updateDisplay(view, "log(")
         } else {
@@ -772,14 +827,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun piButton(view: View) {
+        if (blockInput) return
+
         updateDisplay(view, "π")
     }
 
     fun factorialButton(view: View) {
+        if (blockInput) return
+
         addSymbol(view, "!")
     }
 
     fun squareButton(view: View) {
+        if (blockInput) return
+
         if (!isInvButtonClicked) {
             updateDisplay(view, "√")
         } else {
@@ -793,17 +854,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun percent(view: View) {
+        if (blockInput) return
+
         addSymbol(view, "%")
     }
 
     @SuppressLint("SetTextI18n")
     fun degreeButton(view: View) {
+        if (blockInput) return
+
         keyVibration(view)
         toggleDegreeMode()
         updateResultDisplay()
     }
 
     fun invButton(view: View) {
+        if (blockInput) return
+
         keyVibration(view)
 
         if (!isInvButtonClicked) {
@@ -835,6 +902,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun clearButton(view: View) {
+        if (blockInput) return
+
+        clearMagicSettings()
+
+
+
         keyVibration(view)
         binding.input.setText("")
         binding.resultDisplay.text = ""
@@ -842,6 +915,13 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     fun equalsButton(view: View) {
+        if (allowEquals) {
+            blockInput = false
+            findViewById<SlidingUpPanelLayout>(R.id.sliding_layout).isEnabled = true
+        } else if (blockInput) {
+            return
+        }
+
         lifecycleScope.launch(Dispatchers.Default) {
             keyVibration(view)
 
@@ -975,14 +1055,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun leftParenthesisButton(view: View) {
+        if (blockInput) return
+
         updateDisplay(view, "(")
     }
 
     fun rightParenthesisButton(view: View) {
+        if (blockInput) return
+
         updateDisplay(view, ")")
     }
 
     fun parenthesesButton(view: View) {
+        if (blockInput) return
+
         val cursorPosition = binding.input.selectionStart
         val textLength = binding.input.text.length
 
@@ -1015,6 +1101,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun backspaceButton(view: View) {
+        if (blockInput) return
+
         keyVibration(view)
 
         var cursorPosition = binding.input.selectionStart
@@ -1066,12 +1154,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun scientistModeSwitchButton(view: View) {
+        if (blockInput) return
+
         enableOrDisableScientistMode()
+    }
+
+    private fun clearMagicSettings() {
+        if (Magic.IS_MAGIC_ENABLED) {
+            blockInput = false
+            findViewById<SlidingUpPanelLayout>(R.id.sliding_layout).isEnabled = true
+            enableOrDisableScientistMode()
+        }
     }
 
     // Update settings
     override fun onResume() {
         super.onResume()
+
+        clearMagicSettings()
 
         // Update the theme
         val themes = Themes(this)
